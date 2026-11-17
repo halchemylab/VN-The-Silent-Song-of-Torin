@@ -1,3 +1,14 @@
 import './style.css';
+import { StageManager } from './engine/StageManager';
+import { AudioSynth } from './engine/AudioSynth';
+import { StoryReader } from './ui/StoryReader';
 
-document.querySelector<HTMLDivElement>('#app')!.innerHTML = '<main><p>A clockwork fable</p><h1>The Silent Song of Torin</h1><p>The storybook is taking shape.</p></main>';
+const stage = new StageManager();
+let available = true;
+try { await stage.init(document.querySelector<HTMLElement>('#stage')!); }
+catch (error) {
+  available = false;
+  console.warn('The animated stage is unavailable; the complete reader remains available.', error);
+  document.body.classList.add('static-stage');
+}
+new StoryReader(document.querySelector<HTMLElement>('#app')!, available ? stage : undefined, new AudioSynth());

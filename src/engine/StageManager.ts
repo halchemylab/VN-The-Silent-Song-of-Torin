@@ -39,7 +39,7 @@ void main(){
  c.r=texture(uTexture,uv+vec2(uAberration,0.0)).r;
  c.b=texture(uTexture,uv-vec2(uAberration,0.0)).b;
  float grain=fract(sin(dot(uv+uTime*.001,vec2(12.9898,78.233)))*43758.5453);
- float vignette=smoothstep(.85,.18,distance(uv,vec2(.58,.44)));
+ float vignette=1.0-smoothstep(.18,.85,distance(uv,vec2(.58,.44)));
  c.rgb *= .62+.38*vignette;
  c.rgb += (grain-.5)*.025*c.a;
  finalColor=c;
@@ -209,7 +209,7 @@ export class StageManager {
     // Settle an interrupted crossfade before replacing scenery, keeping at most two scenes alive.
     for(const child of [...this.scenery.children]) {
       gsap.killTweensOf(child);
-      if(child!==this.current) {this.scenery.removeChild(child);child.destroy({children:true,texture:true,textureSource:true});}
+      if(child!==this.current) this.disposeScene(child as Container);
     }
     const old=this.current;
     this.gears=[];
@@ -228,7 +228,13 @@ export class StageManager {
     this.glow(scene,1100,800,1000,color,.12);
     for(const p of this.motes)p.sprite.tint=color;
     this.choreographer.fade(scene,1);
-    if(old)this.choreographer.fade(old,0,()=>{if(old.parent){old.parent.removeChild(old);old.destroy({children:true,texture:true,textureSource:true});}});
+    if(old)this.choreographer.fade(old,0,()=>{if(old.parent)this.disposeScene(old);});
+  }
+  private disposeScene(scene: Container) {
+    // Only the generated background belongs to this scene; glow textures are shared.
+    const background=scene.children[0];
+    if(background instanceof Sprite)background.texture.destroy(true);
+    scene.parent?.removeChild(scene);scene.destroy({children:true});
   }
   show(beat: Beat, trigger = true) {
     this.setScene(beat.location,beat.mood);this.choreographer.move(beat);
@@ -285,7 +291,7 @@ export class StageManager {
     this.filter.resources.atmosphere.uniforms.uTime=this.elapsed;
     this.filter.resources.atmosphere.uniforms.uAberration=this.effectState.aberration;
   }
-  private resize = () => {this.scale=Math.max(innerWidth/1600,innerHeight/1000);};
+  private resize = () => {this.scale=Math.max(innerWidth/1600,innerHeight/1000);this.root.filterArea=new Rectangle(0,0,innerWidth,innerHeight);};
   private onPointer = (e: PointerEvent) => {this.pointer.x=e.clientX/innerWidth-.5;this.pointer.y=e.clientY/innerHeight-.5;};
   private onVisibility = () => {this.active=!document.hidden;if(this.active)this.app.start();else this.app.stop();};
 }
