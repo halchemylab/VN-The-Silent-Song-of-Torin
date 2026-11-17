@@ -1,0 +1,58 @@
+You are an expert Creative Technologist, WebGL Graphics Engineer, and Narrative Designer. 
+Your task is to build a complete, production-ready, non-interactive kinetic storybook visual novel for the story located in `story/manuscript.md` ("The Silent Song of Torin").
+
+Execute this end-to-end across logical, atomic git commits without stopping for confirmation until the full four-act experience is playable in the browser.
+
+### 1. Tech Stack & Project Setup (Commit 1)
+- Initialize a Vite + TypeScript project in the root directory.
+- Install `pixi.js` (v8), `gsap`, and `lucide-react` (or clean SVG icons for minimal UI controls).
+- Configure Google Fonts in `index.html`: `Cinzel` (display/chapter headers), `Cormorant Garamond` (literary narrative serif), and `JetBrains Mono` (subtle clockwork/aetheric telemetry accents).
+- Set up a clean directory structure:
+  - `story/manuscript.md` (existing source of truth — do not alter the prose)
+  - `src/data/storyboard.ts` (parsed scene & beat structure)
+  - `src/engine/StageManager.ts` (PixiJS v8 WebGL stage, procedural backdrops, shaders, particle systems)
+  - `src/engine/Choreographer.ts` (GSAP timelines, camera pans/zooms, screen shakes, transitions)
+  - `src/engine/AudioSynth.ts` (procedural Web Audio API ambient soundscape & harmonic chimes — zero external MP3 dependencies required so it works immediately out of the box)
+  - `src/ui/StoryReader.ts` (typography overlay, smooth page-turn pacing, chapter progress bar, auto-play/manual advance controls)
+
+### 2. Narrative & Storyboard Data Pipeline (Commit 2)
+- Read `story/manuscript.md` completely (all 4 parts: "Part 1: The Inventor's Loss", "Part 2: The Mechanical Underworld", "Part 3: The Challenge", "Part 4: Return and Resonance").
+- Parse the ENTIRE manuscript verbatim into `src/data/storyboard.ts` broken down into **Scenes** and **Beats** (1–3 paragraphs or dialogue exchanges per beat). Do NOT summarize or truncate any text from the manuscript.
+- Tag every beat with metadata driving the visual engine:
+  - `act`: 1 | 2 | 3 | 4
+  - `location`: e.g., `'torin_workshop_warm'`, `'exhibition_hall'`, `'aether_rift'`, `'underworld_city'`, `'archivists_hall'`, `'tarnished_gear_tavern'`, `'molten_plains'`, `'castle_gates'`, `'throne_room'`, `'divine_workshop'`, `'torin_workshop_moonlit'`, `'concert_hall_aurora'`
+  - `mood`: `'warm_amber'`, `'cerulean_crisis'`, `'void_rift'`, `'steam_brass'`, `'divine_awe'`, `'solemn_focus'`, `'dissolution'`, `'melancholy_silver'`, `'hopeful_gold'`
+  - `camera`: `{ zoom: number, panX: number, panY: number, shake?: number }`
+  - `effectTrigger`?: `'harmonic_pulse' | 'overheat_flash' | 'rift_tear' | 'memory_projection' | 'polarity_wave' | 'gods_arrival' | 'dissolve_particles' | 'aurora_song'`
+  - `speaker`?: `'Torin' | 'Isolabella' | 'Marcus' | 'Archivist' | 'Hecate' | 'Dagon' | 'Narrator'` (with distinct subtle accent styling for spoken dialogue vs. written notepad entries in Parts 2–3).
+
+### 3. Procedural WebGL Stage & Shaders (Commit 3)
+Since we are starting without external image assets, build a rich, atmospheric, multi-layered **procedural PixiJS v8 visual engine** (`StageManager.ts`) that looks like an animated storybook painting:
+- **2.5D Parallax Depth Layers:** Render background gradients, architectural silhouettes (rotating interlocking clockwork gears, gothic-industrial arches, floating lanterns, celestial planetarium rings), midground atmospheric haze, and foreground framing elements that subtly respond to mouse movement and GSAP camera pans.
+- **Custom Particle Systems:**
+  - Floating golden dust motes & rising iridescent steam plumes.
+  - Aetheric harmonic wave rings that expand outward on musical/resonance cues.
+  - Glowing embers & sparks in the Mechanical Underworld.
+  - The Part 3 dissolution effect: glowing golden-silver particles rising upward when Torin looks at Isolabella.
+- **Post-Processing / Mood Transitions:** Smoothly interpolate color palettes, vignette intensity, bloom/glow filters, and chromatic aberration during the Part 1 explosion and Aethergram Compass rift jump.
+
+### 4. Procedural Web Audio Soundscape (Commit 4)
+Build `AudioSynth.ts` using the native **Web Audio API** (unlocked cleanly on the "Begin Story" user click, with a mute/volume toggle in the corner):
+- Subtle, non-intrusive ambient beds that shift by Act: warm low-pass workshop hum & soft rhythmic clockwork ticks (Act 1), deep metallic cavern drone & resonant chimes (Act 2), crystalline harmonic overtones (Act 3), and gentle music-box / resonant string-like harmonic pads (Act 4).
+- Subtle harmonic swells on major `effectTrigger` beats.
+
+### 5. Storybook UI & Smooth Choreography (Commit 5)
+- **Title Screen:** Elegant full-bleed animated cover over the live PixiJS canvas showing "The Silent Song of Torin" with a "Begin Reading" button and a Chapter Select drawer (Parts 1–4).
+- **Reading Experience:**
+  - Frame the viewport with subtle dark-brass/glassmorphic aesthetics that never obscure the background art.
+  - Animate text entry smoothly per beat using GSAP (gentle vertical drift + opacity reveal, no jarring typewriter sound).
+  - Visually distinguish Torin's written notepad lines in Parts 2 & 3 (e.g., styled like etched brass/parchment script) from spoken dialogue and narration.
+  - Support **Three Reading Modes**:
+    1. Click / Spacebar / Right-Arrow to advance beat-by-beat (with Left-Arrow to step back).
+    2. Optional "Auto-Read" toggle that paces transitions smoothly based on word count.
+    3. Scrubbable bottom progress bar showing Act markers so any scene can be jumped to instantly.
+
+### 6. Verification & Polish (Commit 6)
+- Run `npm run build` to ensure zero TypeScript or Vite bundling errors.
+- Verify that every single paragraph of `story/manuscript.md` is present in `storyboard.ts` in exact order.
+- Ensure smooth 60fps performance and responsive layout across desktop and tablet viewports.
