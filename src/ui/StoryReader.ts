@@ -327,7 +327,7 @@ export class StoryReader {
     this.el("next-inline").innerHTML =
       `${this.index === beats.length - 1 ? "The final note" : "Continue"} ${icon("arrow")}`;
     this.stage?.show(beat, trigger);
-    this.audio.setAct(beat.act);
+    this.audio.setBeat(beat, trigger);
     if (trigger && beat.effectTrigger) this.audio.trigger(beat.effectTrigger);
     this.updateCaption();
     this.save();

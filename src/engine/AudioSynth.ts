@@ -1,10 +1,18 @@
-import type { Act, Effect } from "../data/storyboard";
+import type { Act, Beat, Effect } from "../data/storyboard";
+import { phrase, type MusicCue, type MusicState } from "../data/score";
 
 /** Quiet, entirely synthesized ambience. No network requests or audio assets. */
 export class AudioSynth {
   private context?: AudioContext;
   private master?: GainNode;
   private drone?: GainNode;
+  private ambience?: GainNode;
+  private notes = new Map<OscillatorNode, GainNode>();
+  private musicState: MusicState = "together";
+  private pendingCue?: MusicCue;
+  private silenceUntil = 0;
+  private nextPhraseAt = 0;
+  private visibilityHandler?: () => void;
   private voices: OscillatorNode[] = [];
   private filter?: BiquadFilterNode;
   private timer?: ReturnType<typeof setInterval>;
@@ -19,6 +27,10 @@ export class AudioSynth {
     await this.context!.resume();
     this.setAct(this.act);
     this.applyVolume();
+    if (this.pendingCue) {
+      this.playPhrase(this.pendingCue);
+      this.pendingCue = undefined;
+    }
   }
   private create() {
     const context = new AudioContext();
@@ -31,6 +43,8 @@ export class AudioSynth {
     limiter.ratio.value = 5;
     master.connect(limiter);
     limiter.connect(context.destination);
+    this.ambience = context.createGain();
+    this.ambience.connect(master);
     const drone = context.createGain();
     drone.gain.value = 0.13;
     this.drone = drone;
@@ -39,7 +53,7 @@ export class AudioSynth {
     filter.frequency.value = 700;
     this.filter = filter;
     drone.connect(filter);
-    filter.connect(master);
+    filter.connect(this.ambience);
     for (let i = 0; i < 4; i++) {
       const voice = context.createOscillator();
       voice.type = i === 0 ? "sine" : "triangle";
@@ -71,13 +85,14 @@ export class AudioSynth {
     airGain.gain.value = 0.15;
     air.connect(airFilter);
     airFilter.connect(airGain);
-    airGain.connect(master);
+    airGain.connect(this.ambience);
     air.start();
     this.timer = setInterval(() => this.clock(), 1100);
-    document.addEventListener("visibilitychange", () => {
-      if (document.hidden) void context.suspend();
+    this.visibilityHandler = () => {
+      if (document.hidden) void context.suspend().catch(() => {});
       else if (this.running) void context.resume().catch(() => {});
-    });
+    };
+    document.addEventListener("visibilitychange", this.visibilityHandler);
   }
   setAct(act: Act) {
     this.act = act;
@@ -113,7 +128,64 @@ export class AudioSynth {
   }
   pause() {
     this.running = false;
+    this.pendingCue = undefined;
+    this.cancelNotes();
     this.applyVolume();
+  }
+  /** Restore the score from this page, including after a seek or a reload. */
+  setBeat(beat: Beat, trigger = true) {
+    this.cancelNotes();
+    this.setAct(beat.act);
+    this.musicState = beat.musicState;
+    const c = this.context;
+    this.silenceUntil = 0;
+    this.nextPhraseAt = (c?.currentTime ?? 0) + 32;
+    if (c && this.ambience) {
+      this.ambience.gain.cancelScheduledValues(c.currentTime);
+      this.ambience.gain.setTargetAtTime(1, c.currentTime, 0.15);
+    }
+    // A seek restores the musical state without replaying cinematic accents.
+    const cue = trigger ? beat.musicCue : undefined;
+    this.pendingCue = undefined;
+    if (cue) {
+      if (c?.state === "running" && this.running) this.playPhrase(cue);
+      else this.pendingCue = cue;
+    }
+  }
+  private cancelNotes() {
+    const c = this.context;
+    if (!c) return;
+    for (const [voice, gain] of this.notes) {
+      gain.gain.cancelScheduledValues(c.currentTime);
+      gain.gain.setTargetAtTime(0, c.currentTime, 0.015);
+      voice.stop(c.currentTime + 0.06);
+    }
+    this.notes.clear();
+  }
+  private playPhrase(cue: MusicCue) {
+    const c = this.context;
+    if (!c || !this.running) return;
+    if (cue === "silence") {
+      this.cancelNotes();
+      this.silenceUntil = c.currentTime + 1.8;
+      this.ambience!.gain.cancelScheduledValues(c.currentTime);
+      this.ambience!.gain.setTargetAtTime(0, c.currentTime, 0.025);
+      this.ambience!.gain.setTargetAtTime(1, this.silenceUntil, 0.8);
+      return;
+    }
+    for (const n of phrase(cue)) {
+      const frequency = 440 * 2 ** ((n.midi - 69) / 12);
+      const level = n.level * 0.045;
+      this.note(
+        frequency,
+        n.duration,
+        level,
+        n.voice === "torin" ? "triangle" : "sine",
+        n.at,
+      );
+      if (n.voice === "isolabella")
+        this.note(frequency * 2, n.duration * 0.55, level * 0.14, "sine", n.at);
+    }
   }
   private note(
     frequency: number,
@@ -136,7 +208,9 @@ export class AudioSynth {
     gain.connect(this.master);
     voice.start(at);
     voice.stop(at + duration + 0.1);
+    this.notes.set(voice, gain);
     voice.onended = () => {
+      this.notes.delete(voice);
       voice.disconnect();
       gain.disconnect();
     };
@@ -150,18 +224,29 @@ export class AudioSynth {
     )
       return;
     this.step++;
+    if (this.context!.currentTime < this.silenceUntil) return;
     if (this.act === 1)
       this.note(this.step % 2 ? 660 : 880, 0.055, 0.017, "triangle");
-    if (this.step % [8, 6, 5, 4][this.act - 1] === 0) {
-      const root = [220, 164.81, 261.63, 293.66][this.act - 1];
-      this.note(
-        root * [1, 1.5, 2, 1.25][Math.floor(this.step / 4) % 4],
-        3,
-        0.025,
-      );
+    if (this.context!.currentTime >= this.nextPhraseAt) {
+      this.nextPhraseAt = this.context!.currentTime + 42;
+      const cue: MusicCue =
+        this.musicState === "together"
+          ? "duet"
+          : this.musicState === "presence"
+            ? "answer"
+            : this.musicState === "voiceless"
+              ? "outline"
+              : this.musicState === "remembrance"
+                ? "reunion"
+                : "solo";
+      this.playPhrase(cue);
     }
   }
   trigger(effect: Effect) {
+    // These moments have their own narrative score; generic swells would
+    // obscure the silence, remembered fragments, or the final duet.
+    if (["overheat_flash", "memory_projection", "aurora_song"].includes(effect))
+      return;
     const root =
       effect === "dissolve_particles"
         ? 293.66
@@ -174,6 +259,10 @@ export class AudioSynth {
   }
   destroy() {
     clearInterval(this.timer);
+    this.running = false;
+    if (this.visibilityHandler)
+      document.removeEventListener("visibilitychange", this.visibilityHandler);
+    this.cancelNotes();
     void this.context?.close();
   }
 }

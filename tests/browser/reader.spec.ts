@@ -103,6 +103,9 @@ test("auto-read advances and pauses while a panel is open", async ({
   await page.clock.fastForward(120000);
   await expect(page.locator("#page-count")).toHaveText("002 / 143");
   await page.keyboard.press("Escape");
+  // The native dialog queues its close event; let it restore the timer before
+  // skipping a minute of virtual time.
+  await page.clock.runFor(50);
   await page.clock.fastForward(60000);
   await expect(page.locator("#page-count")).toHaveText("003 / 143");
   await page.locator("#previous").click();

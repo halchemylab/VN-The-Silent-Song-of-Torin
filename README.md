@@ -28,6 +28,7 @@ The production build is written to `dist/`. Serve that directory with a static w
 - **Auto-read** paces each page by word count and gently scrolls overflowing text. Manual navigation or manual scrolling pauses it. Opening a panel or hiding the tab pauses its timer.
 - **Reading settings** controls text size, auto-read speed, sound volume, mute, and reduced motion. Settings and your last page are saved locally when browser storage is available.
 - Sound begins only after a reading action. Returning to the title fades it out. No MP3 files or external audio services are used.
+- A shared musical theme follows Torin and Isolabella: paired phrases in their early workshop, an interrupted phrase and brief silence at the accident, an unanswered melody in grief, and only harmonic traces after his sacrifice. Memories and the forbidden collaboration reveal fragments of her answer. Torin's phrase returns when his voice recovers; Aurora Lyra carries both themes in a new arrangement. Page changes cancel unfinished notes, and chapter jumps restore the appropriate musical state.
 
 The reader works without WebGL using a still background. Reduced motion disables camera movement, particles, flashes, and text reveals. Longer paragraphs remain scrollable at large text sizes and small viewports. Google Fonts enhance the typography when reachable; system serif and monospace fallbacks keep the reader usable without them.
 

@@ -1,3 +1,5 @@
+import { scoreParagraph, type MusicState, type MusicCue } from "./score.ts";
+
 export type Act = 1 | 2 | 3 | 4;
 export type Mood =
   | "warm_amber"
@@ -29,6 +31,8 @@ export interface Beat {
   kind: "narration" | "dialogue" | "written";
   camera: { zoom: number; panX: number; panY: number; shake?: number };
   effectTrigger?: Effect;
+  musicState: MusicState;
+  musicCue?: MusicCue;
 }
 export interface Chapter {
   act: Act;
@@ -154,6 +158,7 @@ export function parseManuscript(source: string): {
   const chapters: Chapter[] = [];
   const beats: Beat[] = [];
   let act: Act = 1;
+  let musicState: MusicState = "together";
   let scene = cues[0];
   for (const paragraph of lines) {
     const heading = paragraph.match(/^Part ([1-4]): (.+)$/);
@@ -198,6 +203,8 @@ export function parseManuscript(source: string): {
       effectTrigger = "aurora_song";
     else if (/device hummed to life under/.test(paragraph))
       effectTrigger = "harmonic_pulse";
+    const score = scoreParagraph(paragraph, musicState);
+    musicState = score.state;
     beats.push({
       id: `act-${act}-beat-${beats.length + 1}`,
       act,
@@ -215,6 +222,8 @@ export function parseManuscript(source: string): {
         shake: effectTrigger === "overheat_flash" ? 12 : undefined,
       },
       effectTrigger,
+      musicState,
+      musicCue: score.cue,
     });
   }
   if (chapters.length !== 4 || !beats.length)
