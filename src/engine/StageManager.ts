@@ -88,7 +88,9 @@ export class StageManager {
       antialias: true,
       resolution: Math.min(devicePixelRatio, 1.5),
       autoDensity: true,
-      preference: "webgl",
+      // The stage's post-processing shader requires WebGL. Let main.ts use the
+      // static reader when unavailable instead of selecting another renderer.
+      preference: ["webgl"],
       powerPreference: "low-power",
     });
     host.append(this.app.canvas);

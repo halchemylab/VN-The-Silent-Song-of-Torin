@@ -58,7 +58,7 @@ npm test
 npm run test:browser
 ```
 
-The production build includes manuscript verification and strict TypeScript checking. Unit tests check act ordering, metadata, written communication, and all eight cinematic cues. Playwright reads every page against the manuscript through the ending and tests navigation, persistence, autoplay, responsive layouts, and unavailable WebGL/storage. Screenshots are generated in the ignored `test-results/` directory.
+The production build includes manuscript verification and strict TypeScript checking. Unit tests check act ordering, metadata, written communication, and all eight cinematic cues. Playwright reads every page against the manuscript through the ending using the supported static stage. Separate browser tests render and capture each animated cinematic, keeping software rendering out of the full manuscript walkthrough. Other browser tests cover navigation, persistence, autoplay, responsive layouts, and unavailable WebGL/storage. Screenshots are generated in the ignored `test-results/` directory.
 
 Browser tests use an installed Chrome by default on local machines. To use Playwright's Chromium instead:
 

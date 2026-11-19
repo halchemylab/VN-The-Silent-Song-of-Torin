@@ -1,22 +1,34 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { parseManuscript } from "../../src/data/parser";
 const story = parseManuscript(
   readFileSync(new URL("../../story/manuscript.md", import.meta.url), "utf8"),
 );
 
+async function withoutWebGL(page: Page) {
+  await page.addInitScript(() => {
+    const getContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (
+      type: string,
+      ...args: unknown[]
+    ) {
+      if (type.includes("webgl")) return null;
+      return Reflect.apply(getContext, this, [type, ...args]);
+    } as typeof getContext;
+  });
+}
+
 test("the entire four-act manuscript is playable verbatim through the ending", async ({
   page,
 }) => {
-  // Rendering all 143 pages and cinematic screenshots can take several minutes
-  // on CI's software renderer. Individual assertions keep their short timeout.
-  test.setTimeout(420000);
+  // Check every page using the supported static stage. Animated scenes have
+  // separate tests below so software rendering does not slow every page turn.
+  await withoutWebGL(page);
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
   await expect(page.locator("#begin")).toBeVisible();
-  await expect(page.locator("#stage canvas")).toBeVisible();
-  await page.screenshot({ path: "test-results/cover-desktop.png" });
+  await expect(page.locator("body")).toHaveClass(/static-stage/);
   await page.locator("#begin").click();
   for (let i = 0; i < story.beats.length; i++) {
     await expect(page.locator("#prose p")).toHaveText(
@@ -25,14 +37,6 @@ test("the entire four-act manuscript is playable verbatim through the ending", a
     await expect(page.locator("#page-count")).toHaveText(
       `${String(i + 1).padStart(3, "0")} / ${story.beats.length}`,
     );
-    if (i === 0)
-      await page.screenshot({ path: "test-results/reader-desktop.png" });
-    if (story.beats[i].effectTrigger) {
-      await page.waitForTimeout(1400);
-      await page.screenshot({
-        path: `test-results/effect-${story.beats[i].effectTrigger}.png`,
-      });
-    }
     await page.locator("#next").click();
   }
   await expect(page.locator("#ending")).toBeVisible();
@@ -42,6 +46,33 @@ test("the entire four-act manuscript is playable verbatim through the ending", a
   await expect(page.locator("#page-count")).toHaveText("142 / 143");
   expect(errors).toEqual([]);
 });
+
+for (const [index, beat] of story.beats.entries()) {
+  if (!beat.effectTrigger) continue;
+  test(`animated cinematic: ${beat.effectTrigger}`, async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await page.goto("/");
+    await expect(page.locator("#stage canvas")).toBeVisible();
+    if (beat.effectTrigger === "overheat_flash")
+      await page.screenshot({ path: "test-results/cover-desktop.png" });
+    await page.locator("#begin").click();
+    if (beat.effectTrigger === "overheat_flash")
+      await page.screenshot({ path: "test-results/reader-desktop.png" });
+    // Seek to the preceding page, then advance normally to trigger the effect.
+    await page.locator("#progress").fill(String(index - 1));
+    await page.locator("#next").click();
+    await expect(page.locator("#prose p")).toHaveText(beat.paragraphs[0]);
+    await expect(page.locator("#page-count")).toHaveText(
+      `${String(index + 1).padStart(3, "0")} / ${story.beats.length}`,
+    );
+    await page.waitForTimeout(1400);
+    await page.screenshot({
+      path: `test-results/effect-${beat.effectTrigger}.png`,
+    });
+    expect(errors).toEqual([]);
+  });
+}
 
 test("chapters, notebook styling, scrubbing, preferences, and resume work", async ({
   page,
@@ -162,15 +193,8 @@ for (const viewport of [
 test("story remains readable without WebGL or persistent storage", async ({
   page,
 }) => {
+  await withoutWebGL(page);
   await page.addInitScript(() => {
-    const getContext = HTMLCanvasElement.prototype.getContext;
-    HTMLCanvasElement.prototype.getContext = function (
-      type: string,
-      ...args: unknown[]
-    ) {
-      if (type.includes("webgl")) return null;
-      return Reflect.apply(getContext, this, [type, ...args]);
-    } as typeof getContext;
     Object.defineProperty(window, "localStorage", {
       get() {
         throw new Error("Storage blocked");
