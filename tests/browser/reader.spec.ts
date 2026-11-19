@@ -8,6 +8,9 @@ const story = parseManuscript(
 test("the entire four-act manuscript is playable verbatim through the ending", async ({
   page,
 }) => {
+  // Rendering all 143 pages and cinematic screenshots can take several minutes
+  // on CI's software renderer. Individual assertions keep their short timeout.
+  test.setTimeout(420000);
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
