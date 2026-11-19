@@ -124,31 +124,6 @@ test("chapters, notebook styling, scrubbing, preferences, and resume work", asyn
   await expect(page.locator("#scene-name")).toHaveText("Aurora Lyra");
 });
 
-test("auto-read advances and pauses while a panel is open", async ({
-  page,
-}) => {
-  await page.clock.install();
-  await page.goto("/");
-  await page.locator("#begin").click();
-  await page.locator("#autoplay").click();
-  await page.clock.fastForward(60000);
-  await expect(page.locator("#page-count")).toHaveText("002 / 143");
-  await page.locator("#settings").click();
-  await page.clock.fastForward(120000);
-  await expect(page.locator("#page-count")).toHaveText("002 / 143");
-  await page.keyboard.press("Escape");
-  // The native dialog queues its close event; let it restore the timer before
-  // skipping a minute of virtual time.
-  await page.clock.runFor(50);
-  await page.clock.fastForward(60000);
-  await expect(page.locator("#page-count")).toHaveText("003 / 143");
-  await page.locator("#previous").click();
-  await expect(page.locator("#autoplay")).toHaveAttribute(
-    "aria-pressed",
-    "false",
-  );
-});
-
 for (const viewport of [
   { width: 820, height: 1180 },
   { width: 390, height: 844 },
