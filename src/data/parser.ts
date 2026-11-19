@@ -1,4 +1,5 @@
 import { scoreParagraph, type MusicState, type MusicCue } from "./score.ts";
+import { resolveArtwork, sceneArt, type ArtworkId } from "./sceneArt.ts";
 
 export type Act = 1 | 2 | 3 | 4;
 export type Mood =
@@ -33,6 +34,7 @@ export interface Beat {
   effectTrigger?: Effect;
   musicState: MusicState;
   musicCue?: MusicCue;
+  artwork?: ArtworkId;
 }
 export interface Chapter {
   act: Act;
@@ -160,6 +162,7 @@ export function parseManuscript(source: string): {
   let act: Act = 1;
   let musicState: MusicState = "together";
   let scene = cues[0];
+  let artwork: ArtworkId | undefined;
   for (const paragraph of lines) {
     const heading = paragraph.match(/^Part ([1-4]): (.+)$/);
     if (heading) {
@@ -205,6 +208,7 @@ export function parseManuscript(source: string): {
       effectTrigger = "harmonic_pulse";
     const score = scoreParagraph(paragraph, musicState);
     musicState = score.state;
+    artwork = resolveArtwork(scene[1], paragraph, artwork);
     beats.push({
       id: `act-${act}-beat-${beats.length + 1}`,
       act,
@@ -214,11 +218,15 @@ export function parseManuscript(source: string): {
       paragraphs: [paragraph],
       speaker,
       kind: written ? "written" : spoken ? "dialogue" : "narration",
+      artwork,
       camera: {
-        zoom:
-          scene[3] === "dissolution" ? 1.12 : 1 + (beats.length % 4) * 0.012,
-        panX: Math.sin(beats.length * 0.7) * 18,
-        panY: Math.cos(beats.length * 0.5) * 8,
+        zoom: artwork
+          ? sceneArt[artwork].zoom
+          : scene[3] === "dissolution"
+            ? 1.12
+            : 1 + (beats.length % 4) * 0.012,
+        panX: artwork ? 0 : Math.sin(beats.length * 0.7) * 18,
+        panY: artwork ? 0 : Math.cos(beats.length * 0.5) * 8,
         shake: effectTrigger === "overheat_flash" ? 12 : undefined,
       },
       effectTrigger,

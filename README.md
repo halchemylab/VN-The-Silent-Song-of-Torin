@@ -50,6 +50,8 @@ Beats are derived directly from the manuscript rather than maintaining a second,
 
 Scenery uses a logical 1600 × 1000 composition, centered and scaled to cover the viewport. Camera motion and pointer parallax use separate depth layers. Particle count, display resolution (capped at 1.5×), and the render loop (capped at 60 fps) are bounded. Rendering and sound suspend in hidden tabs. Frame rate varies with hardware, screen size, and browser; 60 fps is a target rather than a guarantee.
 
+Three key sequences have bespoke layered illustrations in the same engraved brass, green, and silver style: the exhibition resonator (intact, unstable, and broken), the Forged Gods (empty thrones, steam, Hecate, then Dagon), and Aurora Lyra's concert (waiting and singing). `src/data/sceneArt.ts` derives these persistent states from the manuscript; `src/engine/SceneArt.ts` draws them directly with PixiJS, without external image downloads. State restores on seeks and resumes, while transient effects are canceled on page changes and only play during forward reading. Portrait screens reframe and soften the illustrations behind the text; reduced motion preserves the artwork with immediate transitions.
+
 ## Verification
 
 ```sh

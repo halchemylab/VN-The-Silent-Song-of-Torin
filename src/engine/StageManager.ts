@@ -10,6 +10,8 @@ import {
 import { gsap } from "gsap";
 import type { Beat, Mood, Effect } from "../data/storyboard";
 import { Choreographer } from "./Choreographer";
+import type { ArtworkId } from "../data/sceneArt";
+import { createSceneArt, frameSceneArt } from "./SceneArt";
 
 const palettes: Record<Mood, [string, string, string]> = {
   warm_amber: ["#101d19", "#354632", "#d3ad63"],
@@ -77,6 +79,7 @@ export class StageManager {
   private elapsed = 0;
   private location = "";
   private mood: Mood = "warm_amber";
+  private artwork?: ArtworkId;
   private pointer = { x: 0, y: 0 };
   private scale = 1;
   private active = true;
@@ -422,10 +425,30 @@ export class StageManager {
       .stroke({ color, width: 5, alpha: 0.35 });
     this.glow(parent, x, y, 90 * scale, color, 0.6);
   }
-  private setScene(location: string, mood: Mood) {
-    if (location === this.location && mood === this.mood) return;
+  private setScene(
+    location: string,
+    mood: Mood,
+    artwork?: ArtworkId,
+    instant = false,
+  ) {
+    if (
+      location === this.location &&
+      mood === this.mood &&
+      artwork === this.artwork
+    ) {
+      if (instant) {
+        for (const child of [...this.scenery.children]) {
+          gsap.killTweensOf(child);
+          if (child !== this.current) this.disposeScene(child as Container);
+        }
+        if (this.current) this.current.alpha = 1;
+      }
+      return;
+    }
     this.location = location;
     this.mood = mood;
+    this.artwork = artwork;
+    this.app.canvas.dataset.artwork = artwork ?? "procedural";
     // Settle an interrupted crossfade before replacing scenery, keeping at most two scenes alive.
     for (const child of [...this.scenery.children]) {
       gsap.killTweensOf(child);
@@ -440,9 +463,14 @@ export class StageManager {
     const palette = palettes[mood],
       color = palette[2];
     scene.addChild(this.background(palette));
-    this.architecture(scene, location, color);
-    if (/workshop|rift|exhibition/.test(location))
-      this.instrument(scene, color, location === "aether_rift");
+    if (artwork) {
+      scene.addChild(createSceneArt(artwork));
+      frameSceneArt(scene, innerWidth <= 900);
+    } else {
+      this.architecture(scene, location, color);
+      if (/workshop|rift|exhibition/.test(location))
+        this.instrument(scene, color, location === "aether_rift");
+    }
     this.gear(scene, 1530, 850, 200, color, -0.018);
     this.gear(scene, 1450, 140, 100, color, 0.025);
     // Hanging lanterns, framing pipes, a low horizon and drifting atmospheric light.
@@ -464,11 +492,16 @@ export class StageManager {
     }
     this.glow(scene, 1100, 800, 1000, color, 0.12);
     for (const p of this.motes) p.sprite.tint = color;
-    this.choreographer.fade(scene, 1);
-    if (old)
-      this.choreographer.fade(old, 0, () => {
-        if (old.parent) this.disposeScene(old);
-      });
+    if (instant) {
+      scene.alpha = 1;
+      if (old) this.disposeScene(old);
+    } else {
+      this.choreographer.fade(scene, 1);
+      if (old)
+        this.choreographer.fade(old, 0, () => {
+          if (old.parent) this.disposeScene(old);
+        });
+    }
   }
   private disposeScene(scene: Container) {
     // Only the generated background belongs to this scene; glow textures are shared.
@@ -478,28 +511,42 @@ export class StageManager {
     scene.destroy({ children: true });
   }
   show(beat: Beat, trigger = true) {
-    this.setScene(beat.location, beat.mood);
+    this.clearEffects();
+    this.setScene(
+      beat.location,
+      beat.mood,
+      beat.artwork,
+      !trigger || this.choreographer.reduced,
+    );
     this.choreographer.move(beat);
     if (trigger && beat.effectTrigger) this.trigger(beat.effectTrigger);
   }
   cover() {
+    this.clearEffects();
     this.setScene("torin_workshop_warm", "warm_amber");
     this.choreographer.move({ camera: { zoom: 1, panX: 0, panY: 0 } } as Beat);
   }
-  private trigger(effect: Effect) {
+  private clearEffects() {
     gsap.killTweensOf(this.effectState);
-    for (const child of [...this.effects.children]) {
+    const stop = (child: Container) => {
       gsap.killTweensOf(child);
       gsap.killTweensOf(child.scale);
+      gsap.killTweensOf(child.position);
+      for (const nested of child.children) stop(nested);
+    };
+    for (const child of [...this.effects.children]) {
+      stop(child);
       child.destroy({ children: true });
     }
     this.effectState.aberration = 0;
+  }
+  private trigger(effect: Effect) {
     if (this.choreographer.reduced) return;
     const color = palettes[this.mood][2];
     if (effect === "overheat_flash" || effect === "rift_tear") {
       this.effectState.aberration = 0.012;
       gsap.to(this.effectState, { aberration: 0, duration: 2.5 });
-      const flash = new Graphics().rect(0, 0, 1600, 1000).fill({
+      const flash = new Graphics().rect(-1600, -1000, 4800, 3000).fill({
         color: effect === "rift_tear" ? "#bccaff" : "#d4f7ff",
         alpha: 0.7,
       });
@@ -625,6 +672,9 @@ export class StageManager {
   private resize = () => {
     this.scale = Math.max(innerWidth / 1600, innerHeight / 1000);
     this.app.stage.filterArea = new Rectangle(0, 0, innerWidth, innerHeight);
+    for (const scene of this.scenery.children)
+      frameSceneArt(scene, innerWidth <= 900);
+    this.effects.position.x = innerWidth <= 900 ? -310 : 0;
   };
   private onPointer = (e: PointerEvent) => {
     this.pointer.x = e.clientX / innerWidth - 0.5;

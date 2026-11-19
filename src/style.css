@@ -436,6 +436,13 @@ article[data-kind="written"] .prose {
   right: 10%;
   opacity: 0.55;
 }
+@media (min-width: 901px) {
+  .is-reading[data-artwork] .art-caption {
+    top: max(116px, 13vh);
+    bottom: auto;
+    opacity: 0.65;
+  }
+}
 .reading-controls {
   position: fixed;
   bottom: 0;

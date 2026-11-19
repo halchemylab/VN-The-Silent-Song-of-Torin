@@ -233,7 +233,7 @@ export class StoryReader {
     this.audio.setAct(beats[index].act);
     void this.audio.unlock().catch(() => this.audioFailure());
     this.index = index;
-    this.render();
+    this.render(index === 0);
     this.article.focus({ preventScroll: true });
   }
   private home() {
@@ -249,6 +249,7 @@ export class StoryReader {
     this.el("reading-controls").hidden = true;
     this.el("cover-footer").hidden = false;
     document.body.classList.remove("is-reading");
+    delete document.body.dataset.artwork;
     this.el("begin").innerHTML =
       `${this.index > 0 ? "Continue reading" : "Begin reading"}${icon("arrow")}`;
     this.el("restart").hidden = this.index === 0;
@@ -266,7 +267,7 @@ export class StoryReader {
       0,
       Math.min(beats.length - 1, this.index + direction),
     );
-    this.render();
+    this.render(direction > 0);
   }
   private jump(index: number) {
     this.auto = false;
@@ -286,6 +287,9 @@ export class StoryReader {
   private render(trigger = true) {
     const beat = beats[this.index],
       chapter = chapters[beat.act - 1];
+    if (this.stage && beat.artwork)
+      document.body.dataset.artwork = beat.artwork;
+    else delete document.body.dataset.artwork;
     this.el("act-label").textContent =
       `PART ${roman[beat.act - 1]} · ${String(beat.act).padStart(2, "0")} / 04`;
     this.el("act-title").textContent = chapter.title;

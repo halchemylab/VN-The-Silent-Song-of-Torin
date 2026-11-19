@@ -40,3 +40,26 @@ test("every cinematic trigger occurs and written communication is identified", (
 });
 test("malformed manuscripts fail explicitly", () =>
   assert.throws(() => parseManuscript("Incomplete")));
+
+test("illustrated states follow the prose without revealing later events", () => {
+  const { beats } = parseManuscript(manuscript);
+  const artwork = (prefix) => {
+    const beat = beats.find((b) => b.paragraphs[0].startsWith(prefix));
+    assert.ok(beat, prefix);
+    return beat.artwork;
+  };
+  assert.equal(artwork("They had met five"), "exhibition_intact");
+  assert.equal(artwork("But during the debut"), "exhibition_intact");
+  assert.equal(artwork('"The pressure'), "exhibition_unstable");
+  assert.equal(artwork('"Torin," Isolabella'), "exhibition_unstable");
+  assert.equal(artwork("Before he could respond"), "exhibition_aftermath");
+  assert.equal(artwork("Torin survived."), undefined);
+  assert.equal(artwork("The throne room doors"), "gods_empty");
+  assert.equal(artwork("The silence shattered"), "gods_steam");
+  assert.equal(artwork("From the left column"), "gods_hecate");
+  assert.equal(artwork('"A fleshling seeks'), "gods_hecate");
+  assert.equal(artwork("From the right column"), "gods_revealed");
+  assert.equal(artwork("Among his later works"), "aurora_waiting");
+  assert.equal(artwork("Her performances were legendary"), "aurora_singing");
+  assert.equal(artwork("He never spoke of Isolabella"), undefined);
+});
