@@ -262,6 +262,23 @@ h1 em {
   letter-spacing: 0.1em;
   color: #9d9e86;
 }
+.sound-recommendation {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  margin-top: 14px;
+  padding: 7px 11px;
+  border: 1px solid #c5a56c70;
+  border-radius: 3px;
+  background: #101d19d9;
+  color: #e3c68e;
+  font: 10px/1.5 var(--mono);
+  letter-spacing: 0.035em;
+}
+.sound-recommendation svg {
+  flex-shrink: 0;
+}
 .tiny-diamond {
   color: #b4945e;
   font-size: 5px;
@@ -1140,6 +1157,17 @@ kbd {
 @media (max-height: 680px) {
   .cover {
     top: 16vh;
+    max-height: calc(84svh - 40px);
+    overflow-y: auto;
+    padding-bottom: 4px;
+  }
+  .sound-recommendation {
+    margin-top: 8px;
+    padding: 4px 10px;
+  }
+  .sound-recommendation svg {
+    width: 16px;
+    height: 16px;
   }
   h1 {
     font-size: clamp(43px, 8vh, 64px);
